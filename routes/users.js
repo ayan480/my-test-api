@@ -1,2 +1,12 @@
-const router = express.Router();
-module.exports = router;  // This is correct.
+const mongoose = require('mongoose');
+
+const userSchema = new mongoose.Schema({
+    firstName: String,
+    lastName: String,
+    phoneNumber: String,
+    email: { type: String, unique: true }
+});
+
+const User = mongoose.model('User', userSchema);
+
+module.exports = User;

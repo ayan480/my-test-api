@@ -3,6 +3,8 @@ const Message = require('../models/message.js');
 // routes/auth.js
 const express = require('express');
 const router = express.Router();
+const User = require('../models/user'); // Import the User model
+
 // Regex patterns for validation
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // Simple email validation
 const phonePattern = /^\d{10}$/; // Example pattern for a 10-digit phone number
@@ -67,7 +69,7 @@ router.post('/login', (req, res) => {
 });
 
 
-router.post('/signup', (req, res) => {
+router.post('/signup', async (req, res) => {
     const { firstName, lastName, phoneNumber, email } = req.body;
 
     // Basic validation
@@ -97,22 +99,48 @@ router.post('/signup', (req, res) => {
         });
     }
 
-    // Here you would typically save the user data to a database
+    // Check if the user already exists
+    try {
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return res.status(400).json({
+                success: false,
+                data: {},
+                message: "Signup failed: Email already in use."
+            });
+        }
 
-    // Sample response after successful signup
-    res.json({
-        success: true,
-        data: {
-            firstName: firstName,
-            lastName: lastName,
-            phoneNumber: phoneNumber,
-            email: email
-        },
-        message: "Signup successful."
-    });
+        // Create a new user instance
+        const newUser = new User({
+            firstName,
+            lastName,
+            phoneNumber,
+            email
+        });
+
+       // Save the user to the database
+       const savedUser = await newUser.save();
+
+        // Send a successful response
+        return res.status(201).json({
+            success: true,
+            data: {
+                id: savedUser._id, // Return the user's MongoDB _id
+                firstName: savedUser.firstName,
+                lastName: savedUser.lastName,
+                phoneNumber: savedUser.phoneNumber,
+                email: savedUser.email
+            },
+            message: "Signup successful."
+        });
+    } catch (error) {
+        console.error("Error during signup:", error);
+        return res.status(500).json({
+            success: false,
+            data: {},
+            message: "Signup failed: An internal error occurred."
+        });
+    }
 });
 
 module.exports = router;
-
-
-module.exports = router; // Correctly export the router
