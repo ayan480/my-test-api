@@ -1,5 +1,3 @@
-
-// routes/notes.js
 const express = require('express');
 const router = express.Router();
 const User = require('../models/user'); 
@@ -7,10 +5,6 @@ const Note = require('../models/Note');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs'); // Import fs module
-
-// Body parsing middleware to handle form-data
-const app = express();
-app.use(express.urlencoded({ extended: true })); // Parses form-data for text fields
 
 // Set up multer for file uploads with size and file count limits
 const storage = multer.diskStorage({
@@ -57,9 +51,6 @@ router.post('/add-note', (req, res) => {
             });
         }
 
-        console.log("Request body:", req.body); // Debugging
-        console.log("Uploaded files:", req.files); // Debugging
-
         const { userId, title, content } = req.body;
 
         // Basic validation
@@ -94,11 +85,19 @@ router.post('/add-note', (req, res) => {
             // Save the note to the database
             await newNote.save();
 
-            res.status(201).json({
-                success: true,
-                message: attachments.length ? "Note added successfully with attachments" : "Note added successfully",
-                data: newNote
-            });
+            if (!attachments || attachments.length === 0) {
+                res.status(201).json({
+                    success: true,
+                    message: "Note added successfully",
+                    data: newNote
+                });
+            } else {
+                res.status(201).json({
+                    success: true,
+                    message: "Note added successfully with attachments",
+                    data: newNote
+                });
+            }
         } catch (error) {
             console.error("Error while adding note:", error);
             res.status(500).json({
@@ -107,35 +106,6 @@ router.post('/add-note', (req, res) => {
             });
         }
     });
-});
-
-// Fetch Notes route by user ID
-router.get('/get-notes/:userId', async (req, res) => {
-    try {
-        const userId = req.params.userId;
-        const notes = await Note.find({ userId: userId });
-
-        console.log("Fetched notes:", notes); // <-- This will help debug what's being returned
-
-        if (!notes) {
-            return res.status(404).json({
-                success: false,
-                message: "No notes found for this user."
-            });
-        }
-
-        res.status(200).json({
-            success: true,
-            message: "Notes fetched successfully",
-            data: notes
-        });
-    } catch (error) {
-        console.error("Error fetching notes:", error);
-        res.status(500).json({
-            success: false,
-            message: "Internal server error"
-        });
-    }
 });
 
 module.exports = router;
