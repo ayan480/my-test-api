@@ -51,4 +51,33 @@ router.post('/add-note', async (req, res) => {
     }
 });
 
+// Fetch Notes route by user ID
+router.get('/get-notes/:userId', async (req, res) => {
+    try {
+        const userId = req.params.userId;
+        const notes = await Note.find({ userId: userId });
+
+        console.log("Fetched notes:", notes); // <-- This will help debug what's being returned
+
+        if (!notes) {
+            return res.status(404).json({
+                success: false,
+                message: "No notes found for this user."
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Notes fetched successfully",
+            data: notes
+        });
+    } catch (error) {
+        console.error("Error fetching notes:", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+});
+
 module.exports = router;
