@@ -11,9 +11,7 @@ const userSchema = new Schema({
     createdAt: {
         type: Date,
         default: Date.now
-    },
-    resetOtp: String, // OTP for password reset
-    resetOtpExpires: Date // Expiry time for OTP
+    }
 });
 
 // Create the User model
