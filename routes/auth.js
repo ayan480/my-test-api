@@ -22,8 +22,8 @@ const crypto = require('crypto'); // For generating OTPs
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
-        user: 'your-email@gmail.com',
-        pass: 'your-email-password'
+        user: 'tamoghna@gmail.com',
+        pass: 'cdie tkza qqgd xmlb'
     }
 });
 

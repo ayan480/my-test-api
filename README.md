@@ -5,3 +5,4 @@ Here is the instruction/guide for the project
 
 # for mail send install  nodemailer =>   npm install nodemailer
 
+# generate an App password using this link => https://myaccount.google.com/apppasswords
