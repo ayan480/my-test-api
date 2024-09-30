@@ -6,7 +6,6 @@ const User = require('../models/user'); // Import the User model
 
 
 // Sample static response data
-const staticId = 1; // Static ID
 const bcrypt = require('bcrypt'); // For password hashing (if used in future)
 
 // Regex patterns for validation
