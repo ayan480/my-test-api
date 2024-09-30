@@ -6,6 +6,7 @@ const User = require('../models/user'); // Import the User model
 
 
 // Sample static response data
+const staticId = 1; // Static ID
 const bcrypt = require('bcrypt'); // For password hashing (if used in future)
 
 // Regex patterns for validation
@@ -14,7 +15,17 @@ const phonePattern = /^\d{10}$/; // Example pattern for a 10-digit phone number
 const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/; // Password validation pattern
 
 
+const nodemailer = require('nodemailer'); // For sending email
+const crypto = require('crypto'); // For generating OTPs
 
+// Transporter for nodemailer
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: 'your-email@gmail.com',
+        pass: 'your-email-password'
+    }
+});
 
 
 router.post('/login', async (req, res) => {
@@ -181,6 +192,153 @@ router.post('/signup', async (req, res) => {
             success: false,
             data: {},
             message: "Signup failed: An internal error occurred."
+        });
+    }
+});
+
+// Forgot Password API: Generate and Send OTP to Email
+router.post('/forgot-password', async (req, res) => {
+    const { email } = req.body;
+
+    if (!email) {
+        return res.status(400).json({
+            success: false,
+            message: "Email is required."
+        });
+    }
+
+    try {
+        // Check if the user exists
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found."
+            });
+        }
+
+        // Generate a 6-digit OTP and set its expiration time (e.g., 15 minutes)
+        const otp = crypto.randomInt(100000, 999999).toString();
+        const otpExpires = Date.now() + 15 * 60 * 1000; // 15 minutes from now
+
+        // Save the OTP and expiration in the user's document
+        user.resetOtp = otp;
+        user.resetOtpExpires = otpExpires;
+        await user.save();
+
+        // Send OTP via email
+        const mailOptions = {
+            from: 'tamoghna2396@gmail.com',
+            to: user.email,
+            subject: 'Password Reset OTP',
+            text: `Your OTP for password reset is ${otp}. It is valid for 15 minutes.`
+        };
+
+        await transporter.sendMail(mailOptions);
+
+        res.json({
+            success: true,
+            message: "OTP sent to your email."
+        });
+    } catch (error) {
+        console.error("Error sending OTP:", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+});
+
+
+router.post('/verify-otp', async (req, res) => {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+        return res.status(400).json({
+            success: false,
+            message: "Email and OTP are required."
+        });
+    }
+
+    try {
+        // Check if the user exists and if the OTP is still valid
+        const user = await User.findOne({
+            email,
+            resetOtp: otp,
+            resetOtpExpires: { $gt: Date.now() } // Check if OTP is not expired
+        });
+
+        if (!user) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid OTP or OTP expired."
+            });
+        }
+
+        // If OTP is valid, send a success response
+        res.json({
+            success: true,
+            message: "OTP verified. You can now reset your password."
+        });
+
+    } catch (error) {
+        console.error("Error verifying OTP:", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+});
+
+router.post('/reset-password', async (req, res) => {
+    const { email, newPassword } = req.body;
+
+    // Validate input
+    if (!email || !newPassword) {
+        return res.status(400).json({
+            success: false,
+            message: "Email and new password are required."
+        });
+    }
+
+    // Validate the new password against your password rules
+    if (!passwordPattern.test(newPassword)) {
+        return res.status(400).json({
+            success: false,
+            message: "New password must meet the complexity requirements."
+        });
+    }
+
+    try {
+        // Find the user by email
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found."
+            });
+        }
+
+        // Hash the new password
+        const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+        // Update the user's password and clear the OTP fields
+        user.password = hashedPassword;
+        user.resetOtp = undefined;
+        user.resetOtpExpires = undefined;
+
+        await user.save();
+
+        res.json({
+            success: true,
+            message: "Password reset successfully."
+        });
+
+    } catch (error) {
+        console.error("Error resetting password:", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error"
         });
     }
 });
