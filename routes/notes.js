@@ -145,4 +145,106 @@ router.get('/get-notes/:userId', async (req, res) => {
     }
 });
 
+
+
+// Update Note route with updated date
+router.put('/update-note/:noteId', (req, res) => {
+    upload(req, res, async function (err) {
+        if (err instanceof multer.MulterError) {
+            return res.status(400).json({
+                success: false,
+                message: err.message
+            });
+        } else if (err) {
+            return res.status(400).json({
+                success: false,
+                message: err.message
+            });
+        }
+
+        const { title, content } = req.body;
+        const noteId = req.params.noteId;
+
+        if (!title || !content) {
+            return res.status(400).json({
+                success: false,
+                message: "Title and content are required."
+            });
+        }
+
+        try {
+            const attachments = req.files ? req.files.map(file => file.path) : [];
+
+            // Find and update the note with new data
+            const updatedNote = await Note.findByIdAndUpdate(noteId, {
+                title,
+                content,
+                $push: { attachments: { $each: attachments } }, // Add new attachments
+                updatedAt: Date.now() // Set updated date
+            }, { new: true }); // `new: true` returns the updated document
+
+            if (!updatedNote) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Note not found."
+                });
+            }
+
+            res.status(200).json({
+                success: true,
+                message: "Note updated successfully.",
+                data: updatedNote
+            });
+        } catch (error) {
+            console.error("Error updating note:", error);
+            res.status(500).json({
+                success: false,
+                message: "Internal server error"
+            });
+        }
+    });
+});
+
+
+// Delete Note route
+router.delete('/delete-note/:noteId', async (req, res) => {
+    try {
+        const noteId = req.params.noteId;
+
+        // Find the note by ID
+        const note = await Note.findById(noteId);
+        if (!note) {
+            return res.status(404).json({
+                success: false,
+                message: "Note not found."
+            });
+        }
+
+        // Remove attached files from the server
+        if (note.attachments && note.attachments.length > 0) {
+            note.attachments.forEach((filePath) => {
+                fs.unlink(filePath, (err) => {
+                    if (err) {
+                        console.error("Error removing file:", err);
+                    }
+                });
+            });
+        }
+
+        // Delete the note from the database
+        await Note.findByIdAndDelete(noteId);
+
+        res.status(200).json({
+            success: true,
+            message: "Note and attachments deleted successfully."
+        });
+    } catch (error) {
+        console.error("Error deleting note:", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+});
+
 module.exports = router;
